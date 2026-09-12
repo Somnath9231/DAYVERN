@@ -30,8 +30,7 @@ export default function LoginPage() {
         setErrorMsg(error.message);
         setLoading(false);
       } else {
-        router.push('/');
-        router.refresh();
+        window.location.href = '/';
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'An unexpected authentication error occurred.');

@@ -24,6 +24,17 @@ function getRequestOrigin(request: NextRequest): string {
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Pass through static files, images, API routes, and internal Next.js assets
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -47,17 +58,6 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-
-  const pathname = request.nextUrl.pathname;
-
-  // Skip middleware processing for internal Next.js paths, static files, and API endpoints
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.')
-  ) {
-    return supabaseResponse;
-  }
 
   // Unauthenticated auth routes
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
@@ -87,9 +87,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for static files, image optimization, and static assets.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
