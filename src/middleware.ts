@@ -17,6 +17,12 @@ function getSanitizedSupabaseAnonKey(): string {
   return rawKey.trim();
 }
 
+function getRequestOrigin(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+  const proto = request.headers.get('x-forwarded-proto') || (request.nextUrl.protocol.startsWith('https') ? 'https' : 'http');
+  return `${proto}://${host}`;
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -44,6 +50,15 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Skip middleware processing for internal Next.js paths, static files, and API endpoints
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return supabaseResponse;
+  }
+
   // Unauthenticated auth routes
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
   const isOnboardingRoute = pathname.startsWith('/onboarding');
@@ -53,15 +68,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const origin = getRequestOrigin(request);
+
   // Redirect unauthenticated users attempting to access protected routes
   if (!user && !isAuthRoute && !isOnboardingRoute) {
-    const redirectUrl = new URL('/login', request.url);
+    const redirectUrl = new URL('/login', origin);
     return NextResponse.redirect(redirectUrl);
   }
 
   // Redirect authenticated users trying to access login or register back to home
   if (user && isAuthRoute) {
-    const redirectUrl = new URL('/', request.url);
+    const redirectUrl = new URL('/', origin);
     return NextResponse.redirect(redirectUrl);
   }
 
